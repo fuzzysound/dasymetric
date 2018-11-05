@@ -26,14 +26,14 @@ def get_count_of_trg_zones(dasymetric, zones):
     return counts
 
 
-def plot_abs_error_hist(true, estimated, bins=None):
+def plot_abs_error_hist(true, estimated, bins=None, xscale='linear', yscale='linear'):
     true = np.array(true)
     estimated = np.array(estimated)
     abs_error = np.abs(true - estimated)
-    if bins is None:
-        plt.hist(abs_error)
-    else:
-        plt.hist(abs_error, bins=bins)
+    plt.hist(abs_error, bins=bins)
+    plt.xscale(xscale)
+    plt.yscale(yscale)
+    plt.show()
 
 
 def plot_abs_error_choropleth(dasymetric, estimated, cmap=None, scheme='equal_interval'):
