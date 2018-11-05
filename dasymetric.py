@@ -387,7 +387,7 @@ class GWEM(IDM_Super):
                     self.density_mapper[subsrc_id][_class] = 0
 
     def _cap(self, density, subsrc_id, _class):
-        if self.density_cap is not None:
+        if self.density_cap is not None and _class in self.density_cap.keys():
             return min(density, self.density_cap[_class] * self.benchmark[subsrc_id])
         else:
             return density

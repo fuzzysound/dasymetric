@@ -72,6 +72,7 @@ class DasymetricTestCase(unittest.TestCase):
         gwem = dasymetric.GWEM(src=SRC, trg=TRG, y_col=Y_COL, src_id_col=SRC_ID_COL, trg_id_col=TRG_ID_COL,
                                aux_path=AUX_PATH, n_iter=50, N=1)
         gwem.set_class_mapper(CLASS_MAPPER)
+        gwem.set_density_cap({'forest': 0.02, 'shrub': 0.02, 'herbaceous': 0.02}, 'dev2')
         estm = gwem.estimate()
         self.assertNotEqual(gwem.density_mapper, {})
         self.assertAlmostEqual(TOTAL_POP, sum(estm), delta=1)
