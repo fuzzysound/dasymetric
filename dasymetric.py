@@ -196,7 +196,8 @@ class IDM(IDM_Super):
             idx = self.aux.index(x, y)
             category = self.aux_values[idx]
             _class = self.class_mapper.get(category, -1)
-            sampled[_class].append(row.name)
+            if _class != -1:
+                sampled[_class].append(row.name)
         return sampled
 
     def _sample_by_percent(self, sampled):
