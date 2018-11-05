@@ -186,7 +186,8 @@ class IDM(IDM_Super):
             nonzero_class = [_class for _class, value in count.items() if value != 0]
             if len(nonzero_class) == 1:
                 _class = nonzero_class[0]
-                sampled[_class].append(row.name)
+                if _class != -1:
+                    sampled[_class].append(row.name)
         return sampled
 
     def _sample_by_centroid(self, sampled):
@@ -206,7 +207,7 @@ class IDM(IDM_Super):
             num_total_cells = sum(count.values())
             if num_total_cells != 0:
                 dominant_class = max(count, key=lambda _class: count[_class])
-                if count[dominant_class] / num_total_cells >= self.threshold:
+                if dominant_class != -1 and count[dominant_class] / num_total_cells >= self.threshold:
                     sampled[dominant_class].append(row.name)
         return sampled
 
