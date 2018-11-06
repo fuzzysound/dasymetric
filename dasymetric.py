@@ -11,8 +11,8 @@ from collections import defaultdict
 
 class Dasymetric(ABC):
     def __init__(self, src, trg, y_col, src_id_col, trg_id_col):
-        self.src = src.set_index(src_id_col)
-        self.trg = trg.set_index(trg_id_col)
+        self.src = self._set_index(src, src_id_col)
+        self.trg = self._set_index(trg, trg_id_col)
         self.y_col = y_col
         self.src_id_col = src_id_col
         self.trg_id_col = trg_id_col
@@ -25,6 +25,13 @@ class Dasymetric(ABC):
         self.class_mapper = None
         self.class_mapper_changed = False
         self.density_mapper = None
+
+    @staticmethod
+    def _set_index(df, id_col):
+        if id_col in df.columns:
+            return df.set_index(id_col)
+        else:
+            return df
 
     def _filter_trg_by_src(self):
         return self.trg.loc[self.trg[self.src_id_col].isin(self.src.index)]
@@ -58,14 +65,16 @@ class Dasymetric(ABC):
         self.counts['src'] = self._count_cell_by_zone('src')
         self.counts['trg'] = self._count_cell_by_zone('trg')
 
-    def _initialize_cell_counts(self):
+    def _initialize_cell_counts(self, verbose):
         if self.counts['src'] is None or self.counts['trg'] is None:
-            print('Initializing raster cell counts...', end='')
+            if verbose:
+                print('Initializing raster cell counts...', end='')
             if self.counts['src'] is None:
                 self.counts['src'] = self._count_cell_by_zone('src')
             if self.counts['trg'] is None:
                 self.counts['trg'] = self._count_cell_by_zone('trg')
-            print('Done.')
+            if verbose:
+                print('Done.')
 
     @abstractmethod
     def estimate(self):
@@ -102,16 +111,18 @@ class IDM_Super(Dasymetric):
     def set_density_mapper(self):
         pass
 
-    def _initialize_density_mapper(self):
+    def _initialize_density_mapper(self, verbose):
         if self.density_mapper is None:
-            print('Initializing density mapper...', end='')
+            if verbose:
+                print('Initializing density mapper...', end='')
             self.set_density_mapper()
-            print('Done')
+            if verbose:
+                print('Done')
 
-    def estimate(self):
+    def estimate(self, verbose=True):
         if self.class_mapper_changed:
-            self._initialize_cell_counts()
-            self._initialize_density_mapper()
+            self._initialize_cell_counts(verbose)
+            self._initialize_density_mapper(verbose)
             self.class_mapper_changed = False
         estimates = []
         for _, row in self.trg.iterrows():
@@ -242,15 +253,16 @@ class EM(IDM_Super):
         self.n_iter = n_iter
         self.density_history = pd.DataFrame()
 
-    def set_density_mapper(self):
-        self._initialize_cell_counts()
+    def set_density_mapper(self, verbose=True):
+        self._initialize_cell_counts(verbose)
         self.density_mapper = {_class: 1 for _class in set(self.class_mapper.values())}
         self.density_mapper[-1] = 0
         for i in range(self.n_iter):
             self.e_step()
             self.m_step()
             self.density_history = self.density_history.append(self.density_mapper, ignore_index=True)
-            print("Iteration: {}, Density mapper: {}".format(i + 1, self.density_mapper))
+            if verbose:
+                print("Iteration: {}, Density mapper: {}".format(i + 1, self.density_mapper))
 
     def e_step(self):
         class_y_estimates = {}
@@ -278,16 +290,18 @@ class EM(IDM_Super):
             else:
                 self.density_mapper[_class] = 0
 
-    def _initialize_density_mapper(self):
+    def _initialize_density_mapper(self, verbose):
         if self.density_mapper is None:
-            print('Initializing density mapper...')
+            if verbose:
+                print('Initializing density mapper...')
             self.set_density_mapper()
-            print('Done')
+            if verbose:
+                print('Done')
 
-    def estimate(self):
+    def estimate(self, verbose=True):
         if self.class_mapper_changed:
-            self._initialize_cell_counts()
-            self._initialize_density_mapper()
+            self._initialize_cell_counts(verbose)
+            self._initialize_density_mapper(verbose)
             self.class_mapper_changed = False
         estimates = []
         for _, row in self.trg.iterrows():
@@ -331,14 +345,15 @@ class GWEM(IDM_Super):
         for i in range(kw.neigh.shape[0]):
             for j, n in enumerate(kw.neigh[i]):
                 weight[i, n] = kw.weights[i][j]
+        np.nan_to_num(weight, copy=False)
         return weight
 
     def set_density_cap(self, density_cap, benchmark_class):
         self.density_cap = density_cap
         self.benchmark_class = benchmark_class
 
-    def set_density_mapper(self):
-        self._initialize_cell_counts()
+    def set_density_mapper(self, verbose=True):
+        self._initialize_cell_counts(verbose)
         self.density_mapper = {subsrc_id: {_class: 1 for _class in set(self.class_mapper.values())} for subsrc_id in
                                self.src.index}
         self.benchmark = {subsrc_id: np.iinfo('int32').max for subsrc_id in self.src.index}
@@ -352,7 +367,8 @@ class GWEM(IDM_Super):
                                   self.src.index}
             mean_density = self._get_mean_density()
             self.density_history = self.density_history.append(mean_density, ignore_index=True)
-            print("Iteration: {}, Mean density: {}".format(i + 1, mean_density))
+            if verbose:
+                print("Iteration: {}, Mean density: {}".format(i + 1, mean_density))
 
     def e_step(self):
         class_y_estimates = {subsrc_id: defaultdict(dict) for subsrc_id in self.src.index}
@@ -398,20 +414,22 @@ class GWEM(IDM_Super):
         mean_density[-1] = 0
         for _class in mean_density.keys():
             mean = np.nanmean(
-                np.array([dm[_class] if _class else np.nan in dm.keys() for dm in self.density_mapper.values()]))
+                np.array([dm[_class] if _class in dm.keys() else np.nan for dm in self.density_mapper.values()]))
             mean_density[_class] = mean
         return mean_density
 
-    def _initialize_density_mapper(self):
+    def _initialize_density_mapper(self, verbose):
         if self.density_mapper is None:
-            print('Initializing density mapper...')
+            if verbose:
+                print('Initializing density mapper...')
             self.set_density_mapper()
-            print('Done')
+            if verbose:
+                print('Done')
 
-    def estimate(self):
+    def estimate(self, verbose=True):
         if self.class_mapper_changed:
-            self._initialize_cell_counts()
-            self._initialize_density_mapper()
+            self._initialize_cell_counts(verbose)
+            self._initialize_density_mapper(verbose)
             self.class_mapper_changed = False
         estimates = []
         for _, row in self.trg.iterrows():
