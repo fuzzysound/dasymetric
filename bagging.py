@@ -3,7 +3,7 @@ from multiprocessing import Pool
 from collections import defaultdict
 import numpy as np
 from statistics import median
-from dasymetric import EM, GWEM
+from .dasymetric import EM, GWEM
 
 
 class Bagging:
