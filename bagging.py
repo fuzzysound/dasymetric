@@ -7,15 +7,20 @@ from .dasymetric import EM, GWEM
 
 
 class Bagging:
-    def __init__(self, dasymetric, n_duplicates):
+    def __init__(self, dasymetric, n_duplicates, verbose=True):
         assert type(dasymetric) in [EM, GWEM], "Bagging only works with EM or GWEM."
         self.dasymetric = dasymetric
         self.method = dasymetric.__class__
+        self.verbose = verbose
         self.duplicates = self._generate_duplicates(n_duplicates)
+        self.duplicate_density_mappers = []
+        self.count = 0
 
     def _generate_duplicates(self, n_duplicates):
         n_samples = self.dasymetric.src.shape[0]
         duplicates = []
+        if self.verbose:
+            print('Creating duplicates...', end='')
         for i in range(n_duplicates):
             sample = random.choices(self.dasymetric.src.index, k=n_samples)
             sample_src = self.dasymetric.src.copy().loc[sample]
@@ -34,6 +39,9 @@ class Bagging:
                     duplicate.set_density_cap(self.dasymetric.density_cap, self.dasymetric.benchmark_class)
             duplicate.set_class_mapper(self.dasymetric.class_mapper)
             duplicates.append(duplicate)
+            if self.verbose and (i + 1) % 10 == 0:
+                print('{}...'.format(str(i + 1)), end='')
+        print('Done.')
         return duplicates
 
     def _handle_duplicates(self, sample_src, sample_trg):
@@ -61,28 +69,45 @@ class Bagging:
         df.index = idx_list
         return df
 
-    def set_density_mapper(self, method='mean'):
+    def set_duplicate_density_mappers(self):
+        if self.verbose:
+            print('Setting density mapper of each duplicates...', end='')
         with Pool() as pool:
-            duplicate_density_mappers = pool.map(self._set_duplicate_density_mapper, self.duplicates)
-        density_by_class = self._get_density_by_class(duplicate_density_mappers)
-        agg_func = self._get_agg_func(method)
-        density_mapper = self._get_density_mapper(density_by_class, agg_func)
-        self.dasymetric.density_mapper = density_mapper
+            results = []
+            for duplicate in self.duplicates:
+                r = pool.apply_async(self._set_duplicate_density_mapper, (duplicate, ), callback=self._callback)
+                results.append(r)
+            for r in results:
+                r.wait()
+        if self.verbose:
+            print('Done.')
 
     @staticmethod
     def _set_duplicate_density_mapper(duplicate):
         duplicate.set_density_mapper(verbose=False)
         return duplicate.density_mapper
 
-    def _get_density_by_class(self, duplicate_density_mappers):
+    def _callback(self, x):
+        self.count += 1
+        if self.verbose and self.count % 10 == 0:
+            print('{}...'.format(str(self.count)), end='')
+        self.duplicate_density_mappers.append(x)
+
+    def set_density_mapper(self, method='mean'):
+        density_by_class = self._get_density_by_class()
+        agg_func = self._get_agg_func(method)
+        density_mapper = self._get_density_mapper(density_by_class, agg_func)
+        self.dasymetric.density_mapper = density_mapper
+
+    def _get_density_by_class(self):
         if self.method is EM:
             density_by_class = defaultdict(list)
-            for density_mapper in duplicate_density_mappers:
+            for density_mapper in self.duplicate_density_mappers:
                 for _class, density in density_mapper.items():
                     density_by_class[_class].append(density)
         elif self.method is GWEM:
             density_by_class = defaultdict(dict)
-            for density_mapper in duplicate_density_mappers:
+            for density_mapper in self.duplicate_density_mappers:
                 for src_id, dm in density_mapper.items():
                     for _class, density in dm.items():
                         if _class not in density_by_class[src_id].keys():
@@ -98,7 +123,6 @@ class Bagging:
             return median
         else:
             raise ValueError("Method must be either mean or median.")
-
 
     def _get_density_mapper(self, density_by_class, agg_func):
         if self.method is EM:

@@ -276,7 +276,7 @@ class EM(IDM_Super):
             if denom != 0:
                 y_sc_array = numerators * y_s / denom
             else:
-                y_sc_array = [0 for i in len(numerators)]
+                y_sc_array = [0 for i in range(len(numerators))]
             for i, c in enumerate(src_classes):
                 class_y_estimates[row.name][c] = y_sc_array[i]
         self.class_y_estimates = class_y_estimates
@@ -382,7 +382,7 @@ class GWEM(IDM_Super):
                 if denom != 0:
                     y_sc_array = numerators * y_s / denom
                 else:
-                    y_sc_array = [0 for i in len(numerators)]
+                    y_sc_array = [0 for i in range(len(numerators))]
                 for i, c in enumerate(src_classes):
                     class_y_estimates[subsrc_id][row.name][c] = y_sc_array[i]
         self.class_y_estimates = class_y_estimates
