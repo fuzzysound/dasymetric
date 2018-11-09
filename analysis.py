@@ -7,7 +7,24 @@ from collections import defaultdict
 def get_rmse(true, estimated):
     true = np.array(true)
     estimated = np.array(estimated)
-    return np.sqrt(np.sum((true - estimated) ** 2))
+    return np.sqrt(np.mean((true - estimated) ** 2))
+
+
+def get_rmse_by_src(dasymetric, estimated):
+    trg = dasymetric.trg.assign(estimated=estimated)
+    trg = trg.assign(squared_error=lambda x: (x[dasymetric.y_col] - x.estimated) ** 2)
+    rmse_by_src = trg.loc[:, [dasymetric.src_id_col, 'squared_error']].groupby(dasymetric.src_id_col).mean()
+    rmse_by_src = rmse_by_src.assign(rmse=lambda x: np.sqrt(x.squared_error))
+    rmse_by_src = rmse_by_src.drop(columns=['squared_error'])
+    return rmse_by_src
+
+
+def get_cv_by_src(dasymetric, estimated):
+    rmse_by_src = get_rmse_by_src(dasymetric, estimated)
+    cv_by_src = dasymetric.src.join(rmse_by_src)
+    cv_by_src = cv_by_src.assign(cv=lambda x: x.rmse / x[dasymetric.y_col])
+    cv_by_src = cv_by_src.loc[:, ['cv']]
+    return cv_by_src
 
 
 def get_top_n_abs_error_zone(dasymetric, estimated, n):
