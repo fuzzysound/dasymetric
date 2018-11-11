@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from pysal.cg.kdtree import KDTree
 from pysal.weights.Distance import Kernel
 from collections import defaultdict
+import pickle
 
 
 class Dasymetric(ABC):
@@ -75,6 +76,18 @@ class Dasymetric(ABC):
                 self.counts['trg'] = self._count_cell_by_zone('trg')
             if verbose:
                 print('Done.')
+
+    def export_cell_counts(self, file):
+        with open(file, 'wb') as f:
+            pickle.dump(self.counts, f, pickle.HIGHEST_PROTOCOL)
+        print('Saved cell counts at {}.'.format(file))
+
+    def import_cell_counts(self, file):
+        with open(file, 'rb') as f:
+            counts = pickle.load(f)
+            assert isinstance(counts, dict), "The counts file is not in proper format."
+            self.counts = counts
+        print('Loaded cell counts from {}.'.format(file))
 
     @abstractmethod
     def estimate(self):
