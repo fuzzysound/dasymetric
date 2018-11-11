@@ -89,6 +89,26 @@ class Dasymetric(ABC):
             self.counts = counts
         print('Loaded cell counts from {}.'.format(file))
 
+    def export_density_mapper(self, file):
+        with open(file, 'wb') as f:
+            pickle.dump(self.density_mapper, f, pickle.HIGHEST_PROTOCOL)
+        print('Saved density mapper at {}.'.format(file))
+
+    def import_density_mapper(self, file):
+        with open(file, 'rb') as f:
+            density_mapper = pickle.load(f)
+            assert isinstance(density_mapper, dict), "The density mapper file is not in proper format."
+            self.density_mapper = density_mapper
+        print('Loaded density mapper from {}.'.format(file))
+
+    def print_density(self, cell_res=30, unit=10 ** 6):
+        ordered_classes = sorted(self.density_mapper.keys(), key=lambda x: -1 * self.density_maper[x])
+        for _class in ordered_classes:
+            print('{_class}: {density}'.format(
+                _class=_class,
+                density=format(self.density_mapper[_class] * unit / (cell_res ** 2), '.2f')
+            ))
+
     @abstractmethod
     def estimate(self):
         pass
@@ -489,3 +509,16 @@ class GWEM(IDM_Super):
             axes[i // 3, i % 3].set_title(_class)
         plt.tight_layout()
         plt.show()
+
+    def print_density(self):
+        print('Not available for GWEM.')
+        print('Instead use print_mean_density_mapper.')
+
+    def print_mean_density(self, cell_res=30, unit=10 ** 6):
+        mean_density = self._get_mean_density()
+        ordered_classes = sorted(mean_density.keys(), key=lambda x: -1 * mean_density[x])
+        for _class in ordered_classes:
+            print('{_class}: {density}'.format(
+                _class=_class,
+                density=format(mean_density[_class] * unit / (cell_res ** 2), '.2f')
+            ))
