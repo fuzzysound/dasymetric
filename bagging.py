@@ -2,13 +2,14 @@ import random
 from multiprocessing import Pool
 from collections import defaultdict
 import numpy as np
+import pickle
 from statistics import median
-from .dasymetric import EM, GWEM
+from .dasymetric import IDM, EM, GWEM
 
 
 class Bagging:
     def __init__(self, dasymetric, n_duplicates, verbose=True):
-        assert type(dasymetric) in [EM, GWEM], "Bagging only works with EM or GWEM."
+        assert type(dasymetric) in [IDM, EM, GWEM], "Bagging only works with IDM, EM or GWEM."
         self.dasymetric = dasymetric
         self.method = dasymetric.__class__
         self.verbose = verbose
@@ -26,7 +27,12 @@ class Bagging:
             sample_src = self.dasymetric.src.copy().loc[sample]
             sample_trg = self.dasymetric.trg.copy()
             sample_src, sample_trg = self._handle_duplicates(sample_src, sample_trg)
-            if self.method is EM:
+            if self.method is IDM:
+                duplicate = IDM(src=sample_src, trg=sample_trg, y_col=self.dasymetric.y_col,
+                                src_id_col=self.dasymetric.src_id_col, trg_id_col=self.dasymetric.trg_id_col,
+                                aux_path=self.dasymetric.aux_path, method=self.dasymetric.method,
+                                threshold=self.dasymetric.threshold)
+            elif self.method is EM:
                 duplicate = EM(src=sample_src, trg=sample_trg, y_col=self.dasymetric.y_col,
                                src_id_col=self.dasymetric.src_id_col, trg_id_col=self.dasymetric.trg_id_col,
                                aux_path=self.dasymetric.aux_path, n_iter=self.dasymetric.n_iter)
@@ -69,6 +75,15 @@ class Bagging:
         df.index = idx_list
         return df
 
+    def import_cell_counts(self, file):
+        with open(file, 'rb') as f:
+            counts = pickle.load(f)
+            assert isinstance(counts, dict), "The counts file is not in proper format."
+            self.dasymetric.counts = counts
+            for duplicate in self.duplicates:
+                duplicate.counts = counts
+        print('Loaded cell counts from {}.'.format(file))
+
     def set_duplicate_density_mappers(self):
         if self.verbose:
             print('Setting density mapper of each duplicates...', end='')
@@ -100,7 +115,7 @@ class Bagging:
         self.dasymetric.density_mapper = density_mapper
 
     def _get_density_by_class(self):
-        if self.method is EM:
+        if self.method is IDM or EM:
             density_by_class = defaultdict(list)
             for density_mapper in self.duplicate_density_mappers:
                 for _class, density in density_mapper.items():
@@ -125,7 +140,7 @@ class Bagging:
             raise ValueError("Method must be either mean or median.")
 
     def _get_density_mapper(self, density_by_class, agg_func):
-        if self.method is EM:
+        if self.method is IDM or EM:
             density_mapper = {}
             for _class, densities in density_by_class.items():
                 density_mapper[_class] = agg_func(densities)
@@ -139,5 +154,5 @@ class Bagging:
     def estimate(self):
         if self.method is EM:
             return self.dasymetric.__class__.__bases__[0].estimate(self.dasymetric)
-        elif self.method is GWEM:
+        elif self.method is IDM or GWEM:
             return self.dasymetric.estimate()
