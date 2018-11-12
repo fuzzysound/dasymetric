@@ -80,26 +80,26 @@ class Dasymetric(ABC):
     def export_cell_counts(self, file):
         with open(file, 'wb') as f:
             pickle.dump(self.counts, f, pickle.HIGHEST_PROTOCOL)
-        print('Saved cell counts at {}.'.format(file))
+        print('Saved cell counts at {}'.format(file))
 
     def import_cell_counts(self, file):
         with open(file, 'rb') as f:
             counts = pickle.load(f)
             assert isinstance(counts, dict), "The counts file is not in proper format."
             self.counts = counts
-        print('Loaded cell counts from {}.'.format(file))
+        print('Loaded cell counts from {}'.format(file))
 
     def export_density_mapper(self, file):
         with open(file, 'wb') as f:
             pickle.dump(self.density_mapper, f, pickle.HIGHEST_PROTOCOL)
-        print('Saved density mapper at {}.'.format(file))
+        print('Saved density mapper at {}'.format(file))
 
     def import_density_mapper(self, file):
         with open(file, 'rb') as f:
             density_mapper = pickle.load(f)
             assert isinstance(density_mapper, dict), "The density mapper file is not in proper format."
             self.density_mapper = density_mapper
-        print('Loaded density mapper from {}.'.format(file))
+        print('Loaded density mapper from {}'.format(file))
 
     def print_density(self, cell_res=30, unit=10 ** 6):
         ordered_classes = sorted(self.density_mapper.keys(), key=lambda x: -1 * self.density_maper[x])
@@ -192,7 +192,7 @@ class IDM(IDM_Super):
             self.aux = rasterio.open(self.aux_path)
             self.aux_values = self.aux.read(1)
 
-    def set_density_mapper(self):
+    def set_density_mapper(self, verbose=True):
         sampled = self._sample()
         self.density_mapper = {}
         unsampled_classes = []

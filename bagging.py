@@ -82,7 +82,7 @@ class Bagging:
             self.dasymetric.counts = counts
             for duplicate in self.duplicates:
                 duplicate.counts = counts
-        print('Loaded cell counts from {}.'.format(file))
+        print('Loaded cell counts from {}'.format(file))
 
     def set_duplicate_density_mappers(self):
         if self.verbose:
