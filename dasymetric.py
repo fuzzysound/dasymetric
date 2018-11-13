@@ -102,7 +102,7 @@ class Dasymetric(ABC):
         print('Loaded density mapper from {}'.format(file))
 
     def print_density(self, cell_res=30, unit=10 ** 6):
-        ordered_classes = sorted(self.density_mapper.keys(), key=lambda x: -1 * self.density_maper[x])
+        ordered_classes = sorted(self.density_mapper.keys(), key=lambda x: -1 * self.density_mapper[x])
         for _class in ordered_classes:
             print('{_class}: {density}'.format(
                 _class=_class,
