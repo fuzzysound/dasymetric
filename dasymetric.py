@@ -522,3 +522,33 @@ class GWEM(IDM_Super):
                 _class=_class,
                 density=format(mean_density[_class] * unit / (cell_res ** 2), '.2f')
             ))
+
+
+class init_EM(EM):
+    def set_density_mapper(self, init_density_mapper, verbose=True):
+        self._initialize_cell_counts(verbose)
+        self.density_mapper = {_class: 0 for _class in set(self.class_mapper.values())}
+        self.density_mapper[-1] = 0
+        for _class, density in init_density_mapper.items():
+            self.density_mapper[_class] = density
+        for i in range(self.n_iter):
+            self.e_step()
+            self.m_step()
+            self.density_history = self.density_history.append(self.density_mapper, ignore_index=True)
+            if verbose:
+                print("Iteration: {}, Density mapper: {}".format(i + 1, self.density_mapper))
+
+    def _initialize_density_mapper(self, init_density_mapper, verbose):
+        if self.density_mapper is None:
+            if verbose:
+                print('Initializing density mapper...')
+            self.set_density_mapper(init_density_mapper)
+            if verbose:
+                print('Done')
+
+    def estimate(self, init_density_mapper, verbose=True):
+        if self.class_mapper_changed:
+            self._initialize_cell_counts(verbose)
+            self._initialize_density_mapper(init_density_mapper, verbose)
+            self.class_mapper_changed = False
+        return super().estimate()
