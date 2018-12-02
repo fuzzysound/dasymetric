@@ -4,10 +4,27 @@ from rasterstats import zonal_stats
 from collections import defaultdict
 
 
+def get_abs_error(dasymetric, estimated):
+    true = np.array(dasymetric.trg[dasymetric.y_col])
+    estimated = np.array(estimated)
+    return np.abs(true - estimated)
+
+
+def get_standardized_abs_error(dasymetric, estimated):
+    true = np.array(dasymetric.trg[dasymetric.y_col])
+    estimated = np.array(estimated)
+    standardized = np.abs((true - estimated) / true)
+    return np.nan_to_num(standardized)
+
+
 def get_rmse(true, estimated):
     true = np.array(true)
     estimated = np.array(estimated)
     return np.sqrt(np.mean((true - estimated) ** 2))
+
+
+def get_corr(vars):
+    return np.corrcoef(*vars)
 
 
 def get_rmse_by_src(dasymetric, estimated):
@@ -32,7 +49,7 @@ def get_top_n_abs_error_zone(dasymetric, estimated, n):
     trg = trg.assign(abs_error=lambda x: np.abs(x[dasymetric.y_col] - x.estimated))
     return trg.nlargest(n, 'abs_error')
 
-
+ 
 def get_count_of_trg_zones(dasymetric, zones):
     counts = defaultdict(dict)
     for zone in zones:
